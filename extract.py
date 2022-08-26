@@ -77,3 +77,143 @@ def extractImg(image):
 
     # Save image with drawn contours
     cv2.imwrite(path + 'image_contours.jpeg', img_cnt)
+
+
+row = []
+column = []
+
+# Sorting boxes to their respective row and columns
+for i in range(len(box)):
+    if i == 0:
+        column.append(box[i])
+        previous = box[i]
+    else:
+        if box[i][1] <= previous[1] + meanHeight / 2:
+            column.append(box[i])
+            previous = box[i]
+            if i == len(box) - 1:
+                row.append(column)
+        else:
+            row.append(column)
+            column = []
+            previous = box[i]
+            column.append(box[i])
+
+# No of Cells
+countCol = 0
+row = row[3:]
+
+for i in range(len(row)):
+    countCol = len(row[i])
+    if countCol > countCol:
+        countCol = countCol
+    center = [int(row[i][j][0] + row[i][j][2] / 2) for j in range(len(row[i])) if row[0]]
+    center = np.array(center)
+    center.sort()
+
+finalboxes = []
+for i in range(len(row)):
+    lis = []
+    for k in range(countCol):
+        lis.append([])
+    for j in range(len(row[i])):
+        diff = abs(center - (row[i][j][0] + row[i][j][2] / 4))
+        minimum = min(diff)
+        indexing = list(diff).index(minimum)
+        lis[indexing].append(row[i][j])
+    finalboxes.append(lis)
+
+signatures = []
+padded_signatures = []
+idx = 0
+for i in range(len(row)):
+    sigImg = finalboxes[i][4].pop()
+    finalboxes[i] = finalboxes[i][1:-1]
+    y, x, w, h = sigImg[0], sigImg[1], sigImg[2], sigImg[3]
+    signature = img_cpy[x:x + h, y:y + w]
+    padded_signature = resize_with_padding(signature)
+    cv2.imwrite(path + f'sig_{idx}.jpeg', signature)
+    cv2.imwrite(path + f'sig_pad_{idx}.jpeg', padded_signature)
+    signatures.append(signature)
+    padded_signatures.append(padded_signature)
+    idx += 1
+
+outer = []
+idx = 0
+print(finalboxes[0])
+final_box_with_text = []
+for i in range(len(finalboxes)):
+    for j in range(len(finalboxes[i])):
+        for k in range(len(finalboxes[i][j])):
+            y, x, w, h = finalboxes[i][j][k][0], finalboxes[i][j][k][1], finalboxes[i][j][k][2], \
+                         finalboxes[i][j][k][3]
+            finalimg = img_cpy[x:x + h, y:y + w - 5]
+            out = pytesseract.image_to_string(finalimg)
+            if len(out) > 5:
+                final_str = out.strip()
+                outer.append(final_str)
+            else:
+                out = pytesseract.image_to_string(finalimg, config='--psm 12')
+                pat = re.compile('(Mr|Ms)')
+                final_str = pat.findall(out)[0]
+                outer.append(final_str)
+            final_box_with_text.append(str(final_str))
+            cv2.imwrite(path + f'table_cell_{idx}.jpeg', finalimg)
+            idx += 1
+
+data = []
+size = 3
+for i in range(len(row)):
+    studentId = outer[i * size]
+    title = outer[i * size + 1][:] if len(outer[i * size + 1]) > 0 else ''
+    name = outer[i * size + 2]
+    student = (i + 1, studentId, title, name)
+    data.append(student)
+
+return data, signatures, final_box_with_text
+
+
+def resize_with_padding(img):
+    img = image_resize(img, width=416)
+    new_image_width = 416
+    new_image_height = 416
+    color = (0, 0, 0)
+    result = np.full((new_image_height, new_image_width, 3), color, dtype=np.uint8)
+    old_image_height, old_image_width, channels = img.shape
+    x_center = (new_image_width - old_image_width) // 2
+    y_center = (new_image_height - old_image_height) // 2
+    result[y_center:y_center + old_image_height, x_center:x_center + old_image_width] = img
+    return result
+
+
+def image_resize(image, width=None, height=None, inter=cv2.INTER_AREA):
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation=inter)
+
+    # return the resized image
+    return resized
+
