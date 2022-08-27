@@ -8,6 +8,7 @@ from sortcontours import sort_contours
 from deskewimg import deskewImg
 
 
+
 def extractImg(image):
     path = './static/'
 
@@ -78,99 +79,123 @@ def extractImg(image):
     # Save image with drawn contours
     cv2.imwrite(path + 'image_contours.jpeg', img_cnt)
 
+    row = []
+    column = []
 
-row = []
-column = []
-
-# Sorting boxes to their respective row and columns
-for i in range(len(box)):
-    if i == 0:
-        column.append(box[i])
-        previous = box[i]
-    else:
-        if box[i][1] <= previous[1] + meanHeight / 2:
+    # Sorting boxes to their respective row and columns
+    for i in range(len(box)):
+        if i == 0:
             column.append(box[i])
             previous = box[i]
-            if i == len(box) - 1:
-                row.append(column)
         else:
-            row.append(column)
-            column = []
-            previous = box[i]
-            column.append(box[i])
-
-# No of Cells
-countCol = 0
-row = row[3:]
-
-for i in range(len(row)):
-    countCol = len(row[i])
-    if countCol > countCol:
-        countCol = countCol
-    center = [int(row[i][j][0] + row[i][j][2] / 2) for j in range(len(row[i])) if row[0]]
-    center = np.array(center)
-    center.sort()
-
-finalboxes = []
-for i in range(len(row)):
-    lis = []
-    for k in range(countCol):
-        lis.append([])
-    for j in range(len(row[i])):
-        diff = abs(center - (row[i][j][0] + row[i][j][2] / 4))
-        minimum = min(diff)
-        indexing = list(diff).index(minimum)
-        lis[indexing].append(row[i][j])
-    finalboxes.append(lis)
-
-signatures = []
-padded_signatures = []
-idx = 0
-for i in range(len(row)):
-    sigImg = finalboxes[i][4].pop()
-    finalboxes[i] = finalboxes[i][1:-1]
-    y, x, w, h = sigImg[0], sigImg[1], sigImg[2], sigImg[3]
-    signature = img_cpy[x:x + h, y:y + w]
-    padded_signature = resize_with_padding(signature)
-    cv2.imwrite(path + f'sig_{idx}.jpeg', signature)
-    cv2.imwrite(path + f'sig_pad_{idx}.jpeg', padded_signature)
-    signatures.append(signature)
-    padded_signatures.append(padded_signature)
-    idx += 1
-
-outer = []
-idx = 0
-print(finalboxes[0])
-final_box_with_text = []
-for i in range(len(finalboxes)):
-    for j in range(len(finalboxes[i])):
-        for k in range(len(finalboxes[i][j])):
-            y, x, w, h = finalboxes[i][j][k][0], finalboxes[i][j][k][1], finalboxes[i][j][k][2], \
-                         finalboxes[i][j][k][3]
-            finalimg = img_cpy[x:x + h, y:y + w - 5]
-            out = pytesseract.image_to_string(finalimg)
-            if len(out) > 5:
-                final_str = out.strip()
-                outer.append(final_str)
+            if box[i][1] <= previous[1] + meanHeight / 2:
+                column.append(box[i])
+                previous = box[i]
+                if i == len(box) - 1:
+                    row.append(column)
             else:
-                out = pytesseract.image_to_string(finalimg, config='--psm 12')
-                pat = re.compile('(Mr|Ms)')
-                final_str = pat.findall(out)[0]
-                outer.append(final_str)
-            final_box_with_text.append(str(final_str))
-            cv2.imwrite(path + f'table_cell_{idx}.jpeg', finalimg)
-            idx += 1
+                row.append(column)
+                column = []
+                previous = box[i]
+                column.append(box[i])
 
-data = []
-size = 3
-for i in range(len(row)):
-    studentId = outer[i * size]
-    title = outer[i * size + 1][:] if len(outer[i * size + 1]) > 0 else ''
-    name = outer[i * size + 2]
-    student = (i + 1, studentId, title, name)
-    data.append(student)
+    # No of Cells
+    countCol = 0
+    row = row[3:]
 
-return data, signatures, final_box_with_text
+    for i in range(len(row)):
+        countCol = len(row[i])
+        if countCol > countCol:
+            countCol = countCol
+        center = [int(row[i][j][0] + row[i][j][2] / 2) for j in range(len(row[i])) if row[0]]
+        center = np.array(center)
+        center.sort()
+
+    finalboxes = []
+    for i in range(len(row)):
+        lis = []
+        for k in range(countCol):
+            lis.append([])
+        for j in range(len(row[i])):
+            diff = abs(center - (row[i][j][0] + row[i][j][2] / 4))
+            minimum = min(diff)
+            indexing = list(diff).index(minimum)
+            lis[indexing].append(row[i][j])
+        finalboxes.append(lis)
+
+    signatures = []
+    padded_signatures = []
+    idx = 0
+    for i in range(len(row)):
+        sigImg = finalboxes[i][4].pop()
+        finalboxes[i] = finalboxes[i][1:-1]
+        y, x, w, h = sigImg[0], sigImg[1], sigImg[2], sigImg[3]
+        signature = img_cpy[x:x + h, y:y + w]
+        padded_signature = resize_with_padding(signature)
+        cv2.imwrite(path + f'sig_{idx}.jpeg', signature)
+        cv2.imwrite(path + f'sig_pad_{idx}.jpeg', padded_signature)
+        signatures.append(signature)
+        padded_signatures.append(padded_signature)
+        idx += 1
+
+    outer = []
+    idx = 0
+    print(finalboxes[0])
+    final_box_with_text = []
+    for i in range(len(finalboxes)):
+        for j in range(len(finalboxes[i])):
+            for k in range(len(finalboxes[i][j])):
+                y, x, w, h = finalboxes[i][j][k][0], finalboxes[i][j][k][1], finalboxes[i][j][k][2], \
+                             finalboxes[i][j][k][3]
+                finalimg = img_cpy[x:x + h, y:y + w - 5]
+                out = pytesseract.image_to_string(finalimg)
+                if len(out) > 5:
+                    final_str = out.strip()
+                    outer.append(final_str)
+                else:
+                    out = pytesseract.image_to_string(finalimg, config='--psm 12')
+                    pat = re.compile('(Mr|Ms)')
+                    final_str = pat.findall(out)[0]
+                    outer.append(final_str)
+                final_box_with_text.append(str(final_str))
+                cv2.imwrite(path + f'table_cell_{idx}.jpeg', finalimg)
+                idx += 1
+
+    #  Check student present or absent
+    new_model = tf.keras.models.load_model('signature.h5')
+    target = {0: '10000409',
+              1: '10009301',
+              2: '10009302',
+              3: '10009303',
+              4: '10009304',
+              5: '10009306',
+              6: 'Absent'}
+
+    attendence = []
+    idx2 = 0
+    for sig in padded_signatures:
+        reshaped_img = sig.reshape(1, 416, 416, 3)
+        pred = new_model.predict(reshaped_img).flatten().tolist()
+        print(f"Pred: {idx2}", pred)
+        idx2 += 1
+
+        result = np.argmax(pred)
+        label = target[result]
+        if label == 'Absent':
+            attendence.append("Absent")
+        else:
+            attendence.append("Present")
+
+    data = []
+    size = 3
+    for i in range(len(row)):
+        studentId = outer[i * size]
+        title = outer[i * size + 1][:] if len(outer[i * size + 1]) > 0 else ''
+        name = outer[i * size + 2]
+        student = (i + 1, studentId, title, name, attendence[i])
+        data.append(student)
+
+    return data, signatures, final_box_with_text
 
 
 def resize_with_padding(img):
@@ -216,4 +241,3 @@ def image_resize(image, width=None, height=None, inter=cv2.INTER_AREA):
 
     # return the resized image
     return resized
-
