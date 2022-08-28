@@ -68,3 +68,51 @@ def createTableCellImageList(tableCellLabels):
         cellImagesWithLabels.append([label, imgUrl])
         idx += 1
     return cellImagesWithLabels
+
+def createSignatureImgURLs(signatures):
+    sigUrlList = []
+    for i in range(len(signatures)):
+        fullUrl = getStaticUrl(f'sig_{i}')
+        sigUrlList.append(fullUrl)
+    return sigUrlList
+
+
+def getStaticUrl(filename, ext='jpeg'):
+    host = 'http://127.0.0.1:5000'
+    sigUrl = url_for('static', filename=f'{filename}.{ext}')
+    return host + sigUrl
+
+
+def dataToJson(data,
+               signature_url_list,
+               original_image,
+               deskew_image,
+               grayscale_image,
+               binary_image,
+               binary_inv_image,
+               vl_img,
+               hl_img,
+               vh_img,
+               vh_binary,
+               img_cnt,
+               table_cell_image_list
+               ):
+    return jsonify({
+        'students': data,
+        'signatures': signature_url_list,
+        'original_img': original_image,
+        'deskew_img': deskew_image,
+        'grayscale_img': grayscale_image,
+        'binary_img': binary_image,
+        'binary_inv_img': binary_inv_image,
+        'vl_img': vl_img,
+        'hl_img': hl_img,
+        'vh_img': vh_img,
+        'vh_binary': vh_binary,
+        'img_cnt': img_cnt,
+        'table_cells': table_cell_image_list
+    })
+
+
+if __name__ == '__main__':
+    app.run()
