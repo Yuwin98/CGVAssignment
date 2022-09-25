@@ -69,6 +69,7 @@ def createTableCellImageList(tableCellLabels):
         idx += 1
     return cellImagesWithLabels
 
+
 def createSignatureImgURLs(signatures):
     sigUrlList = []
     for i in range(len(signatures)):
@@ -114,5 +115,13 @@ def dataToJson(data,
     })
 
 
+def createDirectories():
+    if not os.path.exists("./static"):
+        os.mkdir("./static")
+    if not os.path.exists("./upload"):
+        os.mkdir("./upload")
+
+
 if __name__ == '__main__':
+    createDirectories()
     app.run()
